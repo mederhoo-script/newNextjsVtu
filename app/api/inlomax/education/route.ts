@@ -1,0 +1,98 @@
+import { NextRequest, NextResponse } from 'next/server';
+import * as inlomax from '@/lib/inlomax';
+import {
+  getUserIdFromSession,
+  getWallet,
+  createTransaction,
+  debitWallet,
+  creditWallet,
+  updateTransaction,
+  generateReference,
+} from '@/lib/purchaseUtils';
+
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await getUserIdFromSession();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { service, quantity, amount } = body;
+
+    if (!service || !quantity) {
+      return NextResponse.json(
+        { error: 'Missing required fields: service, quantity' },
+        { status: 400 }
+      );
+    }
+
+    const chargedAmount = amount || 0;
+
+    // Check wallet balance
+    const wallet = await getWallet(userId);
+    if (BigInt(wallet.balance) < BigInt(chargedAmount)) {
+      return NextResponse.json(
+        { error: 'Insufficient balance' },
+        { status: 400 }
+      );
+    }
+
+    // Generate reference
+    const reference = generateReference();
+
+    // Create pending transaction
+    const transaction = await createTransaction({
+      userId,
+      type: 'education',
+      serviceId: service,
+      amount: chargedAmount,
+      chargedAmount,
+      reference,
+    });
+
+    // Debit wallet immediately
+    if (chargedAmount > 0) {
+      await debitWallet(userId, chargedAmount);
+    }
+
+    try {
+      // Call Inlomax API
+      const result = await inlomax.education({
+        service,
+        quantity,
+        reference,
+      });
+
+      // Update transaction with success or processing
+      const newStatus = result.success ? 'success' : 'processing';
+      await updateTransaction(transaction.id, newStatus, result);
+
+      return NextResponse.json({
+        success: true,
+        reference,
+        status: newStatus,
+        data: result,
+      });
+    } catch (apiError) {
+      // Refund wallet on API failure
+      if (chargedAmount > 0) {
+        await creditWallet(userId, chargedAmount);
+      }
+      await updateTransaction(transaction.id, 'failed', {
+        error: apiError instanceof Error ? apiError.message : 'Unknown error',
+      });
+
+      return NextResponse.json(
+        { error: 'Education purchase failed', details: apiError instanceof Error ? apiError.message : 'Unknown error' },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('Error processing education purchase:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
