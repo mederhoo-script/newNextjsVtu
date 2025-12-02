@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Link from 'next/link';
 
@@ -15,15 +15,13 @@ interface Transaction {
 }
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions] = useState<Transaction[]>([]);
   const [loading] = useState(false);
 
-  useEffect(() => {
-    // In a real app, this would fetch from an API
-    // transactions would be fetched here
-    // setTransactions(fetchedData);
-    void setTransactions; // placeholder
-  }, []);
+  // TODO: Implement transaction fetching from API
+  // useEffect(() => {
+  //   fetch('/api/transactions').then(...).then(setTransactions);
+  // }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

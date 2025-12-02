@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import Link from 'next/link';
@@ -20,16 +20,14 @@ interface Transaction {
 
 export default function TransactionDetailsPage() {
   const params = useParams();
-  const [transaction, setTransaction] = useState<Transaction | null>(null);
+  const [transaction] = useState<Transaction | null>(null);
   const [loading] = useState(false);
+  const transactionId = params.id;
 
-  useEffect(() => {
-    // In a real app, this would fetch from an API
-    // transaction would be fetched here using params.id
-    // setTransaction(fetchedData);
-    void params.id;
-    void setTransaction; // placeholder
-  }, [params.id]);
+  // TODO: Implement transaction fetching from API
+  // useEffect(() => {
+  //   fetch(`/api/transactions/${transactionId}`).then(...).then(setTransaction);
+  // }, [transactionId]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -64,7 +62,7 @@ export default function TransactionDetailsPage() {
           <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800 p-8 text-center">
             <p className="text-zinc-600 dark:text-zinc-400">Transaction not found.</p>
             <p className="text-sm text-zinc-500 dark:text-zinc-500 mt-2">
-              Transaction ID: {params.id}
+              Transaction ID: {transactionId}
             </p>
           </div>
         ) : (
